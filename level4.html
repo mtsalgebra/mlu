@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLU — Level 4</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="shared.js"></script>
+<script src="questions.js"></script>
+<style>
+:root{
+  --bg:#080a12;--s1:#0e1120;--s2:#141728;--border:#1e2240;
+  --gold:#e6af2e;--gold2:#f5d06a;
+  --text:#dde2f5;--muted:#5a6080;
+  --correct:#4ade80;--wrong:#f87171;--accent:#f7b84f;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(78,120,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(78,120,255,.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;}
+
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 80px;position:relative;z-index:1;}
+
+/* ── Top bar ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:12px;flex-wrap:wrap;}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;text-decoration:none;padding:8px 14px;border:1px solid var(--border);border-radius:8px;transition:all .2s;background:var(--s1);}
+.back-btn:hover{color:var(--text);border-color:var(--accent);}
+.level-tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);background:rgba(247,184,79,.1);border:1px solid rgba(247,184,79,.25);padding:6px 14px;border-radius:99px;}
+.user-name{font-size:13px;color:var(--muted);}
+.user-name b{color:var(--text);}
+
+/* ── Progress bar ── */
+.progress-row{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+.prog-bar{flex:1;height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold2));border-radius:99px;transition:width .4s ease;}
+.prog-txt{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);min-width:60px;text-align:right;}
+
+/* ── Dot navigator ── */
+.dot-nav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:24px;padding:14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);}
+.dot{width:16px;height:16px;border-radius:4px;background:var(--s2);border:1px solid var(--border);cursor:pointer;transition:all .15s;flex-shrink:0;}
+.dot.active{background:var(--accent);border-color:var(--accent);}
+.dot.answered{background:var(--border);}
+.dot.correct{background:rgba(74,222,128,.4);border-color:var(--correct);}
+.dot.wrong{background:rgba(248,113,113,.3);border-color:var(--wrong);}
+
+/* ── Question card ── */
+.q-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:28px;position:relative;overflow:hidden;animation:slideIn .3s ease;}
+.q-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold2));}
+
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+.q-meta{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.q-num-badge{font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 12px;border-radius:6px;background:rgba(247,184,79,.12);border:1px solid rgba(247,184,79,.25);color:var(--accent);}
+.q-type{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;padding:4px 10px;border-radius:6px;}
+.q-type.pg{color:#63b3ff;background:rgba(99,179,255,.1);border:1px solid rgba(99,179,255,.2);}
+.q-type.is{color:#c084fc;background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.2);}
+
+.q-text{font-size:17px;line-height:1.7;margin-bottom:24px;font-weight:400;}
+.q-text b{color:var(--accent);}
+
+/* ── Choices ── */
+.choices{display:flex;flex-direction:column;gap:9px;}
+.choice{display:flex;align-items:center;gap:14px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:13px 17px;cursor:pointer;transition:all .18s;user-select:none;}
+.choice:hover:not(.locked){border-color:var(--accent);background:rgba(247,184,79,.05);transform:translateX(3px);}
+.choice.selected{border-color:var(--accent);background:rgba(247,184,79,.08);}
+.choice.correct{border-color:var(--correct);background:rgba(74,222,128,.07);}
+.choice.wrong{border-color:var(--wrong);background:rgba(248,113,113,.07);}
+.ch-letter{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;transition:all .18s;flex-shrink:0;}
+.choice.selected .ch-letter{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.choice.correct .ch-letter{background:var(--correct);color:var(--bg);border-color:var(--correct);}
+.choice.wrong .ch-letter{background:var(--wrong);color:var(--bg);border-color:var(--wrong);}
+.ch-text{font-size:15px;}
+
+/* ── Short answer ── */
+.short-wrap{display:flex;flex-direction:column;gap:8px;}
+.short-input{background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:17px;padding:14px 18px;border-radius:10px;outline:none;transition:border-color .2s;width:100%;}
+.short-input:focus{border-color:var(--accent);}
+.short-input.correct{border-color:var(--correct);}
+.short-input.wrong{border-color:var(--wrong);}
+.short-hint{font-size:13px;font-family:'JetBrains Mono',monospace;}
+.short-hint.correct{color:var(--correct);}
+.short-hint.wrong{color:var(--wrong);}
+
+/* ── Action buttons ── */
+.btn-row{display:flex;justify-content:space-between;align-items:center;margin-top:24px;gap:12px;flex-wrap:wrap;}
+.btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;padding:11px 26px;border-radius:10px;border:none;cursor:pointer;transition:all .18s;}
+.btn-accent{background:var(--accent);color:var(--bg);}
+.btn-accent:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-accent:disabled{opacity:.3;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--text);color:var(--text);}
+.btn-danger{background:transparent;border:1px solid rgba(248,113,113,.3);color:var(--wrong);}
+.btn-danger:hover{background:rgba(248,113,113,.08);}
+
+/* ── Result screen ── */
+#result-screen{display:none;animation:fadeUp .5s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+.result-hero{text-align:center;padding:40px 0 32px;}
+.score-ring-wrap{position:relative;width:160px;height:160px;margin:0 auto 24px;}
+.score-ring-wrap svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}
+.score-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-big{font-family:'Fraunces',serif;font-size:40px;font-weight:900;color:var(--accent);line-height:1;}
+.score-denom{font-size:12px;color:var(--muted);}
+.result-title{font-family:'Fraunces',serif;font-size:2.2rem;font-weight:900;margin-bottom:8px;}
+.result-sub{color:var(--muted);font-size:15px;margin-bottom:28px;}
+
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;}
+.stat{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 12px;text-align:center;}
+.stat .val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;margin-bottom:4px;}
+.stat .lbl{font-size:12px;color:var(--muted);}
+.stat.ok .val{color:var(--correct);}
+.stat.ng .val{color:var(--wrong);}
+.stat.ac .val{color:var(--accent);}
+
+.cert-banner{background:rgba(230,175,46,.06);border:1px solid rgba(230,175,46,.2);border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:12px;font-size:14px;}
+.cert-icon{font-size:24px;}
+
+.action-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.btn-big{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;cursor:pointer;transition:all .2s;border:none;}
+.btn-gold{background:var(--gold);color:#0e0c00;}
+.btn-gold:hover{background:var(--gold2);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-outline:hover{border-color:var(--text);color:var(--text);}
+
+/* Loading overlay */
+#loading{display:none;position:fixed;inset:0;background:rgba(8,10,18,.9);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#loading.show{display:flex;}
+.spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:14px;">Membuat PDF…</div></div>
+
+<div class="wrap">
+  <!-- Quiz screen -->
+  <div id="quiz-screen">
+    <div class="topbar">
+      <a class="back-btn" href="index.html">← Beranda</a>
+      <div class="level-tag">Level 4 · Pecahan: Konversi & Simplifikasi</div>
+      <div class="user-name">Peserta: <b id="user-name-display">—</b></div>
+    </div>
+
+    <div class="progress-row">
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:2%"></div></div>
+      <div class="prog-txt" id="prog-txt">1 / 50</div>
+    </div>
+
+    <div class="dot-nav" id="dot-nav"></div>
+
+    <div id="q-area"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-danger" onclick="confirmFinish()">Selesai</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" id="btn-prev" onclick="goTo(currentIdx-1)">← Prev</button>
+        <button class="btn btn-accent" id="btn-next" onclick="goNext()">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result screen -->
+  <div id="result-screen">
+    <div class="topbar">
+      <a class="back-btn" href="index.html">← Beranda</a>
+      <div class="level-tag">Level 4 · Hasil</div>
+    </div>
+    <div class="result-hero">
+      <div class="score-ring-wrap">
+        <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="65" fill="none" stroke="#1e2240" stroke-width="10"/><circle id="arc-fill" cx="80" cy="80" r="65" fill="none" stroke="#e6af2e" stroke-width="10" stroke-linecap="round" stroke-dasharray="408.41" stroke-dashoffset="408.41"/></svg>
+        <div class="score-ring-inner">
+          <div class="score-big" id="res-pct">0</div>
+          <div class="score-denom">/ 100</div>
+        </div>
+      </div>
+      <div class="result-title" id="res-title">—</div>
+      <div class="result-sub" id="res-sub">—</div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat ok"><div class="val" id="res-correct">0</div><div class="lbl">Benar</div></div>
+      <div class="stat ng"><div class="val" id="res-wrong">0</div><div class="lbl">Salah</div></div>
+      <div class="stat ac"><div class="val" id="res-skip">0</div><div class="lbl">Dilewati</div></div>
+    </div>
+
+    <div class="cert-banner" id="cert-banner">
+      <div class="cert-icon">🏆</div>
+      <div id="cert-msg">—</div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-big btn-gold" onclick="doDownload()">⬇ Download PDF</button>
+      <button class="btn-big btn-outline" onclick="location.href='level4.html'">🎲 Coba Lagi</button>
+      <button class="btn-big btn-outline" onclick="location.href='index.html'">🏠 Beranda</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────
+const LEVEL_NUM = 4;
+const LEVEL_TITLE = 'Pecahan: Konversi & Simplifikasi';
+const TOTAL = 50;
+
+// ── State ──────────────────────────────────────────────────
+let userName = sessionStorage.getItem('MLU_userName') || 'Peserta';
+let questions = [];
+let answers = {};   // { idx: 'answer string' }
+let currentIdx = 0;
+let finished = false;
+
+// ── Init ──────────────────────────────────────────────────
+document.getElementById('user-name-display').textContent = userName;
+questions = LEVEL_GENERATORS[LEVEL_NUM]();
+buildDots();
+renderQ(0);
+
+// ── Dot navigator ─────────────────────────────────────────
+function buildDots() {
+  const nav = document.getElementById('dot-nav');
+  nav.innerHTML = '';
+  questions.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.id = `dot-${i}`;
+    d.title = `Soal ${i+1}`;
+    d.onclick = () => goTo(i);
+    nav.appendChild(d);
+  });
+}
+
+function updateDot(idx, state) {
+  const d = document.getElementById(`dot-${idx}`);
+  if (!d) return;
+  d.className = 'dot' + (idx === currentIdx ? ' active' : '') + (state ? ` ${state}` : '');
+}
+
+function refreshAllDots() {
+  questions.forEach((_, i) => {
+    const d = document.getElementById(`dot-${i}`);
+    if (!d) return;
+    d.className = 'dot';
+    if (i === currentIdx) d.classList.add('active');
+    if (answers[i] !== undefined) d.classList.add('answered');
+  });
+}
+
+// ── Render question ────────────────────────────────────────
+function renderQ(idx) {
+  currentIdx = idx;
+  refreshAllDots();
+
+  // progress
+  document.getElementById('prog-fill').style.width = `${((idx+1)/TOTAL)*100}%`;
+  document.getElementById('prog-txt').textContent = `${idx+1} / ${TOTAL}`;
+
+  // nav buttons
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').textContent = idx < TOTAL-1 ? 'Next →' : 'Lihat Hasil →';
+
+  const q = questions[idx];
+  const saved = answers[idx];
+  let html = `
+    <div class="q-card">
+      <div class="q-meta">
+        <div class="q-num-badge">Soal ${idx+1}</div>
+        <div class="q-type ${q.type}">${q.type==='pg'?'Pilihan Ganda':'Isian Singkat'}</div>
+      </div>
+      <div class="q-text">${q.text}</div>`;
+
+  if (q.type === 'pg') {
+    const letters = ['A','B','C','D'];
+    html += `<div class="choices">`;
+    q.choices.forEach((ch, ci) => {
+      html += `<div class="choice${saved===String(ch)?' selected':''}" id="ch-${ci}" onclick="selectChoice(${ci})">
+        <div class="ch-letter">${letters[ci]}</div>
+        <div class="ch-text">${ch}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="short-wrap">
+      <input class="short-input" id="short-inp" type="text" placeholder="Tulis jawaban…" value="${saved||''}" oninput="saveShort()" onkeydown="if(event.key==='Enter')goNext()">
+    </div>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('q-area').innerHTML = html;
+
+  if (q.type === 'is') {
+    setTimeout(() => document.getElementById('short-inp')?.focus(), 80);
+  }
+}
+
+function selectChoice(ci) {
+  answers[currentIdx] = String(questions[currentIdx].choices[ci]);
+  document.querySelectorAll('.choice').forEach((el, i) => {
+    el.classList.toggle('selected', i === ci);
+  });
+  refreshAllDots();
+}
+
+function saveShort() {
+  const v = document.getElementById('short-inp')?.value.trim();
+  if (v) answers[currentIdx] = v;
+  else delete answers[currentIdx];
+  refreshAllDots();
+}
+
+function goTo(idx) {
+  if (idx < 0 || idx >= TOTAL) return;
+  renderQ(idx);
+}
+
+function goNext() {
+  if (currentIdx < TOTAL - 1) {
+    goTo(currentIdx + 1);
+  } else {
+    finish();
+  }
+}
+
+function confirmFinish() {
+  const unanswered = TOTAL - Object.keys(answers).length;
+  if (unanswered > 0) {
+    if (!confirm(`Masih ada ${unanswered} soal yang belum dijawab. Yakin ingin selesai?`)) return;
+  }
+  finish();
+}
+
+// ── Finish & Score ─────────────────────────────────────────
+function finish() {
+  finished = true;
+  let correct = 0, wrong = 0, skip = 0;
+
+  questions.forEach((q, i) => {
+    const ua = answers[i];
+    if (ua === undefined || ua === '') { skip++; return; }
+    if (ua === String(q.answer)) correct++;
+    else wrong++;
+  });
+
+  const pct = Math.round((correct / TOTAL) * 100);
+  const passed = pct >= 75;
+
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+
+  document.getElementById('res-pct').textContent = pct;
+  document.getElementById('res-correct').textContent = correct;
+  document.getElementById('res-wrong').textContent = wrong;
+  document.getElementById('res-skip').textContent = skip;
+
+  const msgs = [
+    [90, 'Luar Biasa! 🏆', 'Penguasaan materi sangat baik!'],
+    [75, 'Kerja Bagus! 🎉', 'Kamu berhasil LULUS level ini.'],
+    [50, 'Hampir Lulus 💪', 'Coba lagi, kamu pasti bisa!'],
+    [0,  'Perlu Latihan Lagi 📚', 'Pelajari kembali materinya.'],
+  ];
+  const [, title, sub] = msgs.find(([t]) => pct >= t);
+  document.getElementById('res-title').textContent = title;
+  document.getElementById('res-sub').textContent = sub;
+
+  const banner = document.getElementById('cert-banner');
+  const msg = document.getElementById('cert-msg');
+  if (passed) {
+    banner.style.borderColor = 'rgba(230,175,46,.3)';
+    msg.innerHTML = `<b>Selamat!</b> Kamu lulus dengan nilai <b>${pct}%</b>. PDF berisi <b>Sertifikat Kelulusan</b> + Pembahasan Soal.`;
+  } else {
+    banner.style.background = 'rgba(248,113,113,.05)';
+    banner.style.borderColor = 'rgba(248,113,113,.2)';
+    banner.querySelector('.cert-icon').textContent = '📄';
+    msg.innerHTML = `Nilai <b>${pct}%</b> (butuh 75% untuk lulus). PDF berisi <b>Pembahasan Soal</b> untuk belajar lebih lanjut.`;
+  }
+
+  // Animate ring
+  const circ = 408.41;
+  setTimeout(() => {
+    document.getElementById('arc-fill').style.transition = 'stroke-dashoffset 1.2s ease';
+    document.getElementById('arc-fill').style.strokeDashoffset = circ * (1 - pct / 100);
+    if (pct >= 75) document.getElementById('arc-fill').setAttribute('stroke', '#e6af2e');
+    else document.getElementById('arc-fill').setAttribute('stroke', '#f87171');
+  }, 300);
+
+  // Store for PDF
+  window._quizData = { userName, levelTitle: LEVEL_TITLE, levelNum: LEVEL_NUM, score: correct, total: TOTAL, questions, answers, passed };
+}
+
+async function doDownload() {
+  if (!window._quizData) return;
+  document.getElementById('loading').classList.add('show');
+  try {
+    await generatePDF(window._quizData);
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+</script>
+</body>
+</html>
