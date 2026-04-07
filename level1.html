@@ -6,6 +6,7 @@
 <title>MLU — Level 1</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="shared.js"></script>
 <script src="questions.js"></script>
 <style>
@@ -129,18 +130,116 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 #loading.show{display:flex;}
 .spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── FIX: back-navigation warning saat soal sedang berjalan ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(8,10,18,.85);z-index:888;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:28px 32px;max-width:380px;width:90%;text-align:center;}
+.modal-box h3{font-family:'Fraunces',serif;font-size:1.3rem;margin-bottom:10px;}
+.modal-box p{color:var(--muted);font-size:14px;margin-bottom:22px;line-height:1.6;}
+.modal-box .modal-btns{display:flex;gap:10px;justify-content:center;}
+
+/* ── Timer ── */
+.timer-wrap{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;}
+.timer-icon{font-size:14px;line-height:1;}
+.timer-display{font-size:14px;font-weight:600;color:var(--accent);min-width:52px;text-align:center;padding:5px 10px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.2);border-radius:8px;transition:color .3s,background .3s,border-color .3s;}
+.timer-display.warn{color:#f59e0b;background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3);}
+.timer-display.danger{color:var(--wrong);background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.35);animation:timerPulse 1s ease infinite;}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── Password Gate ── */
+#pw-gate{position:fixed;inset:0;background:var(--bg);z-index:900;display:flex;align-items:center;justify-content:center;padding:20px;}
+#pw-gate::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(78,120,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(78,120,255,.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;}
+.pw-card{background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;position:relative;overflow:hidden;animation:fadeUp .4s ease;}
+.pw-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold2));}
+.pw-icon{font-size:36px;margin-bottom:16px;text-align:center;}
+.pw-title{font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;text-align:center;margin-bottom:6px;}
+.pw-sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:28px;line-height:1.5;}
+.pw-label{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:block;}
+.pw-input-wrap{position:relative;margin-bottom:8px;}
+.pw-input{width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:4px;padding:14px 48px 14px 18px;border-radius:10px;outline:none;transition:border-color .2s;}
+.pw-input:focus{border-color:var(--accent);}
+.pw-input.shake{animation:shake .4s ease;}
+.pw-input.err{border-color:var(--wrong);}
+.pw-toggle{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px;transition:color .2s;line-height:1;}
+.pw-toggle:hover{color:var(--text);}
+.pw-err{font-size:12px;color:var(--wrong);font-family:'JetBrains Mono',monospace;min-height:18px;margin-bottom:18px;}
+.pw-btn{width:100%;background:var(--accent);color:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;padding:14px;border-radius:10px;border:none;cursor:pointer;transition:all .2s;}
+.pw-btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.pw-attempts{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;font-family:'JetBrains Mono',monospace;}
+.pw-locked{text-align:center;}
+.pw-locked .lock-icon{font-size:48px;margin-bottom:12px;}
+.pw-locked p{color:var(--muted);font-size:14px;line-height:1.6;}
+.pw-locked .countdown{font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--wrong);margin:12px 0;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 </style>
 </head>
 <body>
 <div id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:14px;">Membuat PDF…</div></div>
 
+<!-- Password Gate -->
+<div id="pw-gate">
+  <div class="pw-card">
+    <div class="pw-icon">🔒</div>
+    <div class="pw-title">Level 1</div>
+    <div class="pw-sub">Masukkan password untuk memulai sesi tes ini.</div>
+
+    <div id="pw-form-area">
+      <label class="pw-label">Password</label>
+      <div class="pw-input-wrap">
+        <input class="pw-input" id="pw-input" type="password" placeholder="••••••••" maxlength="32"
+          onkeydown="if(event.key==='Enter')submitPw()">
+        <button class="pw-toggle" id="pw-toggle" onclick="togglePwVis()" title="Tampilkan/sembunyikan">👁</button>
+      </div>
+      <div class="pw-err" id="pw-err"></div>
+      <button class="pw-btn" onclick="submitPw()">Masuk →</button>
+      <div class="pw-attempts" id="pw-attempts"></div>
+    </div>
+
+    <div class="pw-locked" id="pw-locked" style="display:none;">
+      <div class="lock-icon">🔐</div>
+      <p>Terlalu banyak percobaan gagal.<br>Coba lagi dalam:</p>
+      <div class="countdown" id="pw-countdown">30</div>
+      <p style="font-size:12px;color:var(--muted);">detik</p>
+    </div>
+  </div>
+</div>
+
+<!-- FIX: modal konfirmasi keluar, menggantikan browser confirm() yang tidak konsisten di mobile -->
+<div class="modal-overlay" id="modal-finish">
+  <div class="modal-box">
+    <h3>Selesaikan Tes?</h3>
+    <p id="modal-finish-msg">Yakin ingin mengakhiri dan melihat hasil?</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-finish')">Kembali</button>
+      <button class="btn btn-accent" onclick="finish()">Ya, Selesai</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-leave">
+  <div class="modal-box">
+    <h3>Keluar dari Tes?</h3>
+    <p>Progres kamu akan hilang jika kembali ke beranda. Yakin ingin keluar?</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('modal-leave')">Lanjut Tes</button>
+      <button class="btn btn-danger" onclick="location.href='index.html'">Keluar</button>
+    </div>
+  </div>
+</div>
+
 <div class="wrap">
   <!-- Quiz screen -->
   <div id="quiz-screen">
     <div class="topbar">
-      <a class="back-btn" href="index.html">← Beranda</a>
-      <div class="level-tag">Level 1 · Penjumlahan & Pengurangan</div>
+      <!-- FIX: tombol back sekarang memunculkan modal konfirmasi, bukan langsung pindah halaman -->
+      <a class="back-btn" href="#" onclick="confirmLeave(event)">← Beranda</a>
+      <div class="level-tag">Level 1 · Penjumlahan &amp; Pengurangan</div>
       <div class="user-name">Peserta: <b id="user-name-display">—</b></div>
+      <div class="timer-wrap">
+        <span class="timer-icon">&#9201;</span>
+        <div class="timer-display" id="timer-display">60:00</div>
+      </div>
     </div>
 
     <div class="progress-row">
@@ -167,6 +266,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <a class="back-btn" href="index.html">← Beranda</a>
       <div class="level-tag">Level 1 · Hasil</div>
     </div>
+
     <div class="result-hero">
       <div class="score-ring-wrap">
         <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="65" fill="none" stroke="#1e2240" stroke-width="10"/><circle id="arc-fill" cx="80" cy="80" r="65" fill="none" stroke="#e6af2e" stroke-width="10" stroke-linecap="round" stroke-dasharray="408.41" stroke-dashoffset="408.41"/></svg>
@@ -191,9 +291,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
 
     <div class="action-row">
-      <button class="btn-big btn-gold" onclick="doDownload()">⬇ Download PDF</button>
-      <button class="btn-big btn-outline" onclick="location.href='level1.html'">🎲 Coba Lagi</button>
-      <button class="btn-big btn-outline" onclick="location.href='index.html'">🏠 Beranda</button>
+      <button class="btn-big btn-gold" onclick="doDownload()">&#8595; Download PDF</button>
+      <button class="btn-big btn-outline" onclick="location.href='level1.html'">Coba Lagi</button>
+      <button class="btn-big btn-outline" onclick="location.href='index.html'">Beranda</button>
     </div>
   </div>
 </div>
@@ -216,6 +316,58 @@ document.getElementById('user-name-display').textContent = userName;
 questions = LEVEL_GENERATORS[LEVEL_NUM]();
 buildDots();
 renderQ(0);
+
+// ── Timer 60 menit ─────────────────────────────────────────
+const TIMER_DURATION = 60 * 60; // detik
+let timerSeconds = TIMER_DURATION;
+let timerInterval = null;
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    if (finished) { clearInterval(timerInterval); return; }
+    timerSeconds--;
+    updateTimerDisplay();
+    if (timerSeconds <= 0) {
+      clearInterval(timerInterval);
+      finish(); // langsung ke result page
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer-display');
+  if (!el) return;
+  const m = Math.floor(timerSeconds / 60);
+  const s = timerSeconds % 60;
+  el.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+
+  // Warna berubah saat waktu menipis
+  el.classList.remove('warn', 'danger');
+  if (timerSeconds <= 60)       el.classList.add('danger'); // < 1 menit → merah berkedip
+  else if (timerSeconds <= 300) el.classList.add('warn');   // < 5 menit → kuning
+}
+
+startTimer();
+
+
+// FIX: cegah browser back button saat tes berlangsung
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => {
+  if (!finished) {
+    history.pushState(null, '', location.href);
+    openModal('modal-leave');
+  }
+});
+
+// ── Modal helpers ──────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function confirmLeave(e) {
+  e.preventDefault();
+  if (finished) { location.href = 'index.html'; return; }
+  openModal('modal-leave');
+}
 
 // ── Dot navigator ─────────────────────────────────────────
 function buildDots() {
@@ -274,15 +426,24 @@ function renderQ(idx) {
     const letters = ['A','B','C','D'];
     html += `<div class="choices">`;
     q.choices.forEach((ch, ci) => {
-      html += `<div class="choice${saved===String(ch)?' selected':''}" id="ch-${ci}" onclick="selectChoice(${ci})">
+      // FIX: gunakan checkAnswer() agar pilihan yang ekuivalen (misal "0.1" vs "0.10")
+      // tetap ditandai selected dengan benar
+      const isSaved = saved !== undefined && checkAnswer(String(ch), saved);
+      html += `<div class="choice${isSaved?' selected':''}" id="ch-${ci}" onclick="selectChoice(${ci})">
         <div class="ch-letter">${letters[ci]}</div>
         <div class="ch-text">${ch}</div>
       </div>`;
     });
     html += `</div>`;
   } else {
+    // FIX: escape karakter khusus pada value input agar tidak merusak HTML
+    const safeVal = (saved||'').replace(/"/g, '&quot;');
     html += `<div class="short-wrap">
-      <input class="short-input" id="short-inp" type="text" placeholder="Tulis jawaban…" value="${saved||''}" oninput="saveShort()" onkeydown="if(event.key==='Enter')goNext()">
+      <input class="short-input" id="short-inp" type="text"
+        placeholder="Tulis jawaban…"
+        value="${safeVal}"
+        oninput="saveShort()"
+        onkeydown="if(event.key==='Enter')goNext()">
     </div>`;
   }
 
@@ -324,21 +485,28 @@ function goNext() {
 
 function confirmFinish() {
   const unanswered = TOTAL - Object.keys(answers).length;
-  if (unanswered > 0) {
-    if (!confirm(`Masih ada ${unanswered} soal yang belum dijawab. Yakin ingin selesai?`)) return;
-  }
-  finish();
+  // FIX: ganti browser confirm() dengan modal custom.
+  // Browser confirm() diblokir di beberapa browser mobile (WebView, iOS standalone mode).
+  const msg = unanswered > 0
+    ? `Masih ada <b>${unanswered} soal</b> yang belum dijawab. Yakin ingin selesai?`
+    : `Semua soal sudah dijawab. Siap melihat hasil?`;
+  document.getElementById('modal-finish-msg').innerHTML = msg;
+  openModal('modal-finish');
 }
 
 // ── Finish & Score ─────────────────────────────────────────
 function finish() {
+  clearInterval(timerInterval);
+  closeModal('modal-finish');
   finished = true;
   let correct = 0, wrong = 0, skip = 0;
 
   questions.forEach((q, i) => {
     const ua = answers[i];
     if (ua === undefined || ua === '') { skip++; return; }
-    if (ua === String(q.answer)) correct++;
+    // FIX: gunakan checkAnswer() dari shared.js, bukan === string.
+    // Ini menangani perbedaan format desimal, spasi, koma vs titik, dll.
+    if (checkAnswer(ua, String(q.answer))) correct++;
     else wrong++;
   });
 
@@ -397,6 +565,89 @@ async function doDownload() {
     document.getElementById('loading').classList.remove('show');
   }
 }
+
+// ── Password Gate ──────────────────────────────────────────
+const CORRECT_PW = 'mlu2025';   // ← ganti password di sini
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SEC = 30;
+ 
+let pwAttempts = 0;
+let pwLocked = false;
+let lockTimer = null;
+ 
+function submitPw() {
+  if (pwLocked) return;
+  const val = document.getElementById('pw-input').value;
+  const errEl = document.getElementById('pw-err');
+  const attEl = document.getElementById('pw-attempts');
+ 
+  if (val === CORRECT_PW) {
+    // Correct — dismiss gate
+    const gate = document.getElementById('pw-gate');
+    gate.style.transition = 'opacity .35s ease, transform .35s ease';
+    gate.style.opacity = '0';
+    gate.style.transform = 'scale(1.04)';
+    setTimeout(() => gate.remove(), 380);
+    return;
+  }
+ 
+  // Wrong password
+  pwAttempts++;
+  const remaining = MAX_ATTEMPTS - pwAttempts;
+ 
+  const inp = document.getElementById('pw-input');
+  inp.classList.remove('shake');
+  void inp.offsetWidth; // reflow to restart animation
+  inp.classList.add('shake', 'err');
+  inp.value = '';
+  setTimeout(() => inp.classList.remove('err'), 600);
+ 
+  if (pwAttempts >= MAX_ATTEMPTS) {
+    startLockout();
+    return;
+  }
+ 
+  errEl.textContent = `Password salah. Sisa percobaan: ${remaining}`;
+  attEl.textContent = `Percobaan ${pwAttempts} / ${MAX_ATTEMPTS}`;
+  setTimeout(() => inp.focus(), 50);
+}
+ 
+function startLockout() {
+  pwLocked = true;
+  document.getElementById('pw-form-area').style.display = 'none';
+  document.getElementById('pw-locked').style.display = 'block';
+ 
+  let secs = LOCKOUT_SEC;
+  document.getElementById('pw-countdown').textContent = secs;
+ 
+  lockTimer = setInterval(() => {
+    secs--;
+    document.getElementById('pw-countdown').textContent = secs;
+    if (secs <= 0) {
+      clearInterval(lockTimer);
+      pwLocked = false;
+      pwAttempts = 0;
+      document.getElementById('pw-locked').style.display = 'none';
+      document.getElementById('pw-form-area').style.display = 'block';
+      document.getElementById('pw-err').textContent = '';
+      document.getElementById('pw-attempts').textContent = '';
+      document.getElementById('pw-input').value = '';
+      setTimeout(() => document.getElementById('pw-input').focus(), 50);
+    }
+  }, 1000);
+}
+ 
+function togglePwVis() {
+  const inp = document.getElementById('pw-input');
+  const btn = document.getElementById('pw-toggle');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+ 
+// Focus password input on load
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('pw-input')?.focus(), 200);
+});
 </script>
 </body>
 </html>

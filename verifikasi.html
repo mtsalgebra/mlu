@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verifikasi Sertifikat — Math Level Up</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f111a;
+    color: #dde1f5;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: #161824;
+    border: 1px solid #2a2d40;
+    border-radius: 16px;
+    padding: 36px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .logo h1 { color: #e6af2e; font-size: 20px; letter-spacing: 1px; }
+  .logo p { color: #7880a0; font-size: 12px; margin-top: 4px; }
+  h2 { font-size: 15px; color: #a0a8c8; margin-bottom: 20px; text-align: center; }
+  .input-group { margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: #7880a0; margin-bottom: 6px; }
+  input {
+    width: 100%;
+    background: #1e2030;
+    border: 1px solid #2a2d40;
+    border-radius: 8px;
+    color: #dde1f5;
+    padding: 10px 14px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus { border-color: #e6af2e; }
+  .btn {
+    width: 100%;
+    background: #e6af2e;
+    color: #0f111a;
+    font-weight: 700;
+    font-size: 15px;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .result {
+    margin-top: 24px;
+    padding: 18px;
+    border-radius: 10px;
+    display: none;
+  }
+  .result.valid {
+    background: #0e2a1a;
+    border: 1px solid #38c172;
+  }
+  .result.invalid {
+    background: #2a0e10;
+    border: 1px solid #ef5350;
+  }
+  .result h3 { font-size: 16px; margin-bottom: 12px; }
+  .result.valid h3 { color: #38c172; }
+  .result.invalid h3 { color: #ef5350; }
+  .result .info { font-size: 13px; color: #9098c0; line-height: 1.8; }
+  .result .info span { color: #dde1f5; font-weight: 600; }
+  .divider {
+    border: none;
+    border-top: 1px solid #2a2d40;
+    margin: 24px 0;
+  }
+  .hint {
+    font-size: 11px;
+    color: #555a78;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .qr-section {
+    text-align: center;
+    margin: 20px 0 10px;
+  }
+  #qr-reader {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    display: none;
+  }
+  .scan-btn {
+    background: #1e2030;
+    border: 1px solid #2a2d40;
+    color: #a0a8c8;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+  .scan-btn:hover { border-color: #e6af2e; color: #e6af2e; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>MTS SAINS ALGEBRA</h1>
+    <p>Math Level Up — Verifikasi Sertifikat</p>
+  </div>
+  <h2>🔐 Verifikasi Keaslian Sertifikat</h2>
+
+  <div class="input-group">
+    <label>Nama Siswa</label>
+    <input type="text" id="inp-nama" placeholder="Nama lengkap di sertifikat">
+  </div>
+  <div class="input-group">
+    <label>Nomor Level</label>
+    <input type="number" id="inp-level" placeholder="cth: 5" min="1" max="10">
+  </div>
+  <div class="input-group">
+    <label>Tanggal Terbit (dd MMMM YYYY)</label>
+    <input type="text" id="inp-tgl" placeholder="cth: 7 April 2026">
+  </div>
+  <div class="input-group">
+    <label>Skor (%)</label>
+    <input type="number" id="inp-skor" placeholder="cth: 80" min="0" max="100">
+  </div>
+  <div class="input-group">
+    <label>Kode Autentikasi (dari QR / sertifikat)</label>
+    <input type="text" id="inp-hmac" placeholder="cth: A1B2C3D4E5F6G7H8" style="letter-spacing:1px; font-family:monospace">
+  </div>
+  <button class="btn" onclick="verifikasi()">Verifikasi Sertifikat</button>
+
+  <div id="result" class="result">
+    <h3 id="result-title"></h3>
+    <div class="info" id="result-detail"></div>
+  </div>
+
+  <hr class="divider">
+  <p class="hint">
+    Masukkan data dari sertifikat dan kode autentikasi (tercetak di bawah QR code).<br>
+    Sistem akan memverifikasi apakah sertifikat ini asli dan tidak dimanipulasi.
+  </p>
+</div>
+
+<script>
+// ⚠️ Secret key HARUS sama persis dengan yang ada di shared.js
+const CERT_SECRET = 'ALGEBRA'; // ⚠️ Harus sama persis dengan CERT_SECRET di shared.js
+
+async function generateHMAC(data) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(CERT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('').substring(0, 16).toUpperCase();
+}
+
+async function verifikasi() {
+  const nama  = document.getElementById('inp-nama').value.trim();
+  const level = document.getElementById('inp-level').value.trim();
+  const tgl   = document.getElementById('inp-tgl').value.trim();
+  const skor  = document.getElementById('inp-skor').value.trim();
+  const hmac  = document.getElementById('inp-hmac').value.trim().toUpperCase();
+
+  const resultEl = document.getElementById('result');
+  const titleEl  = document.getElementById('result-title');
+  const detailEl = document.getElementById('result-detail');
+
+  if (!nama || !level || !tgl || !skor || !hmac) {
+    alert('Harap isi semua kolom terlebih dahulu.');
+    return;
+  }
+
+  const payload = `${nama}|${level}|${tgl}|${skor}`;
+  const computed = await generateHMAC(payload);
+  const valid = computed === hmac;
+
+  resultEl.style.display = 'block';
+  resultEl.className = 'result ' + (valid ? 'valid' : 'invalid');
+  titleEl.textContent = valid
+    ? '✅ Sertifikat VALID — Asli & Terpercaya'
+    : '❌ Sertifikat TIDAK VALID — Mungkin Palsu';
+
+  if (valid) {
+    detailEl.innerHTML = `
+      Nama: <span>${nama}</span><br>
+      Level: <span>${level}</span><br>
+      Tanggal: <span>${tgl}</span><br>
+      Skor: <span>${skor}%</span><br>
+      Kode: <span style="font-family:monospace">${hmac}</span><br><br>
+      <span style="color:#38c172">Sertifikat ini telah diverifikasi dan terbukti asli.</span>
+    `;
+  } else {
+    detailEl.innerHTML = `
+      Kode autentikasi tidak cocok.<br><br>
+      Kode yang Anda masukkan: <span style="font-family:monospace">${hmac}</span><br>
+      Kode yang seharusnya: <span style="font-family:monospace">${computed}</span><br><br>
+      <span style="color:#ef5350">Pastikan semua data diisi persis seperti tercetak di sertifikat (termasuk huruf besar/kecil dan ejaan tanggal).</span>
+    `;
+  }
+}
+
+// Allow Enter key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') verifikasi();
+});
+</script>
+</body>
+</html>
